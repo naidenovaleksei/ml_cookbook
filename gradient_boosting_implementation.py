@@ -1,30 +1,30 @@
 #coding=utf-8
 
 from sklearn.base import BaseEstimator
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 import numpy as np
-import scipy.optimize as opt
 
 
 # Ваш email, который вы укажете в форме для сдачи
 AUTHOR_EMAIL = 'naidenov.aleksei@yandex.ru'
 # Параметрами с которыми вы хотите обучать деревья
-TREE_PARAMS_DICT = {'max_depth': 1}
+TREE_PARAMS_DICT = {'max_depth': 4, 'min_samples_leaf': 9, 'min_samples_split': 8}
 # Параметр tau (learning_rate) для вашего GB
-TAU = 0.05
+TAU = 0.01688
 
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def L(y, h):
-    # L для y = 1
+def logloss(y, h):
+    # для y = 1
     p1 = sigmoid(h)
-    # L для y = 0
+    # для y = 0
     p0 = 1 - p1
     return - y * np.log(p1) - (1 - y) * (np.log(p0))
 
-def deriative_L(y, h):
+def deriative_logloss(y, h):
+    """градиент logloss по решaющей функции h(x)"""
     # градиент dL/dh для y = 1
     grad1 = 1 / (1 + np.exp(h))
     # градиент dL/dh для y = 0
@@ -33,70 +33,55 @@ def deriative_L(y, h):
     return grad
 
 def Loss(y, h):
-    L_values = L(y, h)
+    """Общая функция потерь"""
+    L_values = logloss(y, h)
     return np.mean(L_values)
 
 
 
 class SimpleGB(BaseEstimator):
     def __init__(self, tree_params_dict, iters, tau):
+        # tree params
         self.tree_params_dict = tree_params_dict
+        # n estimators
         self.iters = iters
+        # learning rate
         self.tau = tau
+        # trees
+        self.estimators = []
 
     def fit(self, X_data, y_data):
-        # self.base_algo = DecisionTreeClassifier(**self.tree_params_dict).fit(X_data, y_data)
-        self.estimators = []
-        self.ks = []
-        self.fxs = []
-        self.losses = []
-        # curr_pred = self.base_algo.predict(X_data)
+        # среднее таргета
         self.curr_pred = y_data.mean()
-        curr_pred = np.ones_like(y_data) * y_data.mean()
+        # априорная вероятность
+        curr_pred = np.ones_like(y_data) * self.curr_pred
+        # решающая функция
         fx = np.log(curr_pred / (1 - curr_pred))
-        self.fxs.append(fx)
-        self.losses.append(Loss(y_data, fx))
+        # создание деревьев в бустинге
         for iter_num in range(self.iters):
-            # Нужно посчитать градиент функции потерь
-            grad = deriative_L(y_data, fx)
-            # Нужно обучить DecisionTreeRegressor предсказывать антиградиент
-            # Не забудьте про self.tree_params_dict
+            # посчитать градиент функции потерь
+            grad = deriative_logloss(y_data, fx)
+            # обучить DecisionTreeRegressor предсказывать антиградиент
             anti_grad = - grad
             algo = DecisionTreeRegressor(**self.tree_params_dict).fit(X_data, anti_grad)
             hx = algo.predict(X_data)
-            #
-            # func = lambda k: Loss(y_data, fx + k * hx)
-            # k = opt.minimize(func, 0, bounds=((-1, 1),)).x[0]
-            k = 1
-            fx = fx + self.tau * k * hx
-            self.losses.append(Loss(y_data, fx))
-            self.ks.append(k)
-            self.fxs.append(fx)
-
+            # обновление решающей функции
+            fx = fx + self.tau * hx
             self.estimators.append(algo)
-            # # Обновите предсказания в каждой точке
-            # curr_pred = sigmoid(fx)
-        res = sigmoid(fx)
-        self.thr = np.percentile(res, 100 * self.curr_pred)
-        from sklearn.metrics import f1_score
-        # func = lambda thr: ((res > thr).astype(int) != y_data).mean()
-        # func = lambda thr: 1 - f1_score(y_data, (res > thr).astype(int))
-        # thr = opt.minimize(func, 0, bounds=((0, 1),)).x[0]
-        # print(thr)
-        # self.thr = thr
         return self
     
     def predict(self, X_data):
         # Предсказание на данных
+        # априорная вероятность
         curr_pred = np.ones(X_data.shape[0]) * self.curr_pred
+        # решающая фунция
         fx = np.log(curr_pred / (1 - curr_pred))
-        for k,estimator in zip(self.ks, self.estimators):
+        # обновление решающей функции по деревьям бустинга
+        for estimator in self.estimators:
             fx += self.tau * estimator.predict(X_data)
-        # print(fx)
+        # выбор порога
         res = sigmoid(fx)
-        # print(res)
         limit = np.percentile(res, 100 * self.curr_pred)
-        print(limit, self.thr)
-        print(res > limit)
         # Задача классификации, поэтому надо отдавать 0 и 1
         return res > limit
+
