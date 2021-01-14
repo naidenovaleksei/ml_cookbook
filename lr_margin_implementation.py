@@ -3,20 +3,28 @@ import numpy as np
 from sklearn.base import BaseEstimator
 
 
-# Ваш email, который вы укажете в форме для сдачи
-AUTHOR_EMAIL = 'naidenov.aleksei@yandex.ru'
-
-
-LR_PARAMS_DICT = {
-    'C': 2545.7851287569724,
-    'batch_size': 4704,
-    'iters': 3319,
-    'random_state': 777,
-    'step': 0.7396818439186627
-}
+# Пример параметров логистической регрессии
+# LR_PARAMS_DICT = {
+#     'C': 2545.7851287569724,
+#     'batch_size': 4704,
+#     'iters': 3319,
+#     'random_state': 777,
+#     'step': 0.7396818439186627
+# }
 
 
 class MyLogisticRegression(BaseEstimator):
+    """Реализация логистической регрессии через отступ (Margin)
+    Отличается от классического алгоритма только тем,
+    что расчет функции потерь через отступ (Margin), при этом результат расчета одинаковый
+    Параметры:
+        C: float - коэффициент l2 регуляризации (C = 1 / alpha)
+        random_state: int - RandomState для воспроизводитмости
+        iters: int - число итераций стохастического градиентного спуска
+        batch_size: int - размер батча для стохастического градиентного спуска
+        step: float - learning rate градиентного спуска
+    """
+
     def __init__(self, C, random_state, iters, batch_size, step):
         self.C = C
         self.random_state = random_state
@@ -49,7 +57,7 @@ class MyLogisticRegression(BaseEstimator):
         # отступ M
         m = self.__predict(x) * y
         # производная dL / dM
-        dL_dM = - 1 / (1 + np.exp(m))
+        dL_dM = -1 / (1 + np.exp(m))
         # считаем производную по каждой координате на каждом объекте
         ders_w = ((x.T * y.T) * dL_dM).T
         der_w0 = (y.T * dL_dM).T
@@ -60,15 +68,15 @@ class MyLogisticRegression(BaseEstimator):
     def fit(self, X_train, y_train):
         # RandomState для воспроизводитмости
         random_gen = np.random.RandomState(self.random_state)
-        
+
         # получаем размерности матрицы
         size, dim = X_train.shape
-        
+
         # случайная начальная инициализация
         self.w = random_gen.rand(dim)
         self.w0 = random_gen.randn()
 
-        for _ in range(self.iters):  
+        for _ in range(self.iters):
             # берём случайный набор элементов
             rand_indices = random_gen.choice(size, self.batch_size)
             # исходные метки классов это 0/1

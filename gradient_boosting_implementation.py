@@ -1,36 +1,41 @@
-#coding=utf-8
+# coding=utf-8
 
 from sklearn.base import BaseEstimator
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 import numpy as np
 
 
-# Ваш email, который вы укажете в форме для сдачи
-AUTHOR_EMAIL = 'naidenov.aleksei@yandex.ru'
-# Параметрами с которыми вы хотите обучать деревья
-TREE_PARAMS_DICT = {'max_depth': 4, 'min_samples_leaf': 9, 'min_samples_split': 8}
-# Параметр tau (learning_rate) для вашего GB
-TAU = 0.01688
+# Пример параметров деревьев
+# TREE_PARAMS_DICT = {
+#     "max_depth": 4,
+#     "min_samples_leaf": 9,
+#     "min_samples_split": 8
+# }
+# Пример tau (learning_rate) для GB
+# TAU = 0.01688
 
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
+
 
 def logloss(y, h):
     # для y = 1
     p1 = sigmoid(h)
     # для y = 0
     p0 = 1 - p1
-    return - y * np.log(p1) - (1 - y) * (np.log(p0))
+    return -y * np.log(p1) - (1 - y) * (np.log(p0))
+
 
 def deriative_logloss(y, h):
     """градиент logloss по решaющей функции h(x)"""
     # градиент dL/dh для y = 1
     grad1 = 1 / (1 + np.exp(h))
     # градиент dL/dh для y = 0
-    grad0 = np.exp(h) / (1 + np.exp(h)) # 1 - grad1
-    grad = - y * grad1 - (1 - y) * grad0
+    grad0 = np.exp(h) / (1 + np.exp(h))  # 1 - grad1
+    grad = -y * grad1 - (1 - y) * grad0
     return grad
+
 
 def Loss(y, h):
     """Общая функция потерь"""
@@ -38,8 +43,14 @@ def Loss(y, h):
     return np.mean(L_values)
 
 
-
 class SimpleGB(BaseEstimator):
+    """Реализация градиентного бустинга на деревьях решений для задачи классификации
+    Параметры:
+        tree_params_dict: dict - параметры дерева решений sklearn.tree.DecisionTreeRegressor
+        iters: int - число деревьев в градиентном бустинге
+        tau: float - learning rate бустинга (обновление решающей функции)
+    """
+
     def __init__(self, tree_params_dict, iters, tau):
         # tree params
         self.tree_params_dict = tree_params_dict
@@ -62,14 +73,14 @@ class SimpleGB(BaseEstimator):
             # посчитать градиент функции потерь
             grad = deriative_logloss(y_data, fx)
             # обучить DecisionTreeRegressor предсказывать антиградиент
-            anti_grad = - grad
+            anti_grad = -grad
             algo = DecisionTreeRegressor(**self.tree_params_dict).fit(X_data, anti_grad)
             hx = algo.predict(X_data)
             # обновление решающей функции
             fx = fx + self.tau * hx
             self.estimators.append(algo)
         return self
-    
+
     def predict(self, X_data):
         # Предсказание на данных
         # априорная вероятность
@@ -84,4 +95,3 @@ class SimpleGB(BaseEstimator):
         limit = np.percentile(res, 100 * self.curr_pred)
         # Задача классификации, поэтому надо отдавать 0 и 1
         return res > limit
-
