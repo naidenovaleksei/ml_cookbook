@@ -5,3 +5,4 @@
 4. [Визуализация дерева решений](https://github.com/naidenovaleksei/ml_cookbook/blob/master/tree_graphviz.py)
 5. [Оптимизация гиперпараметров с `hyperopt` на примере бинарной классификации текстов](https://github.com/naidenovaleksei/ml_cookbook/blob/master/text_classfication_hyperopt_optimization.ipynb)
 6. [Оптимизация гиперпараметров XGBoost](https://github.com/naidenovaleksei/ml_cookbook/blob/master/xgboost_optimization.ipynb)
+7. [Различные решения линейной регрессии](https://github.com/naidenovaleksei/ml_cookbook/blob/master/linear_regression_solving.ipynb)
